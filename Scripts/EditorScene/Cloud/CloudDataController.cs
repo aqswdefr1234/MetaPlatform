@@ -1,27 +1,17 @@
 using UnityEngine;
-using Firebase;
-using Firebase.Storage;
 using System;
 using System.IO;
 using System.Threading.Tasks;
 using System.IO.Compression;
-using System.Collections.Generic;
-using Debug = UnityEngine.Debug;
+using System.Collections;
+using LightmapAnalysis;
 
-public class SaveCloud : MonoBehaviour
+public class CloudDataController : MonoBehaviour
 {
-    //Firebase.Storage.StorageReference storageReference;
-    
     Transform loadedObjects, gltfGround, lightGround;
-    
+    public Transform test;
     void Start()
     {
-        /*
-        FirebaseApp.CheckAndFixDependenciesAsync().ContinueWith(task =>
-        {
-            FirebaseApp app = FirebaseApp.DefaultInstance;
-            storageReference = FirebaseStorage.DefaultInstance.RootReference;
-        });*/
         SetTransform();
     }
     void SetTransform()
@@ -29,6 +19,32 @@ public class SaveCloud : MonoBehaviour
         loadedObjects = FindTransform.FindSceneRoot("LoadedObjects");
         gltfGround = FindTransform.FindChild(loadedObjects, "GLTFs");
         lightGround = FindTransform.FindChild(loadedObjects, "Lights");
+    }
+    IEnumerator AsyncTasking(Task task, Action successAction)
+    {
+        while (true)
+        {
+            if (task.IsCompleted)
+            {
+                successAction();
+                break;
+            }
+            yield return null;
+        }
+    }
+    public void SaveOneFile()
+    {
+        Task task = Task.Run(SaveCompressFile);
+        StartCoroutine(AsyncTasking(task, () => { }));
+    }
+    public void LoadOneFile()
+    {
+        OverallData allData = null;
+        Task task = Task.Run(() =>
+        {
+            allData = LoadAllData();
+        });
+        StartCoroutine(AsyncTasking(task, () => LoadJson(allData)));
     }
     public void SaveCompressFile()
     {
@@ -40,18 +56,23 @@ public class SaveCloud : MonoBehaviour
         byte[] gzipBytes = SaveCompressedJsonToFile(json);
         File.WriteAllBytes(savedName, gzipBytes);
     }
-    public void LoadCloud()
+    public OverallData LoadAllData()
     {
         string loadFile = Path.Combine(DataController.defaultPath, "CloudFolder", "storagefile");
         byte[] loadBytes = File.ReadAllBytes(loadFile);
         string json = LoadCompressedJsonFromFile(loadBytes);
         OverallData allData = JsonUtility.FromJson<OverallData>(json);
-
+        return allData;
+    }
+    public void LoadJson(OverallData allData)
+    {
         int length = allData.objectNameArr.Length;
-        for(int i = 0; i < length; i++)
+        for (int i = 0; i < length; i++)
         {
             transform.GetComponent<DataController>().LoadJson(allData.objectNameArr[i], allData.objectDataList[i]);
         }
+        transform.GetComponent<DataController>().LoadRealLightJson(allData.lightTransData);
+        transform.GetComponent<RoomController>().LoadJson("Web:Current", allData.bakedData);
     }
     string SerializeAllData()
     {
@@ -92,7 +113,6 @@ public class SaveCloud : MonoBehaviour
             }
             compressedData = memoryStream.ToArray();//압축된 byte[] 데이터
         }
-        Debug.Log("Compressed JSON Data saved to file");
         return compressedData;
 
     }

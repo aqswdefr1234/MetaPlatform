@@ -10,6 +10,7 @@ public class DataController : MonoBehaviour
     [SerializeField] private Transform foundationPrefab;
     [SerializeField] private Transform pointPrefab;
     [SerializeField] private Transform spotPrefab;
+    [SerializeField] private GameObject waitPanel;
 
     public static string defaultPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "MetaShopData");
     Transform loadedObjects, gltfGround, lightGround;
@@ -32,10 +33,27 @@ public class DataController : MonoBehaviour
     }
     public void SaveScene()
     {
-        DirectoryFileController.EmptyFolder(defaultPath, true);
-        ChangeSameName();
-        SaveObjects();
-        SaveLights();
+        try
+        {
+            waitPanel.SetActive(true);
+            DirectoryFileController.EmptyFolder(defaultPath, true);
+            ChangeSameName();
+            SaveLights();
+            SaveObjects();
+            waitPanel.SetActive(false);
+        }
+        catch (Exception e)
+        {
+            Debug.LogError(e.ToString());
+            waitPanel.SetActive(false);
+        }
+        
+    }
+    public void LoadScene()
+    {
+        RemoveInstantiate();
+        LoadLights();
+        LoadObjects();
     }
     void ChangeSameName()
     {
@@ -56,18 +74,16 @@ public class DataController : MonoBehaviour
     }
     void SaveObjects()
     {
-        int count = gltfGround.childCount;
-        Transform child = null;
-        for (int i = 0; i < count; i++)
-        {
-            child = gltfGround.GetChild(i);
-            objectParser.EncodingObject(child);
-
-            string json = JsonUtility.ToJson(objectParser);
-            string fileName = child.name;
-            string path = Path.Combine(defaultPath, fileName);
-            File.WriteAllText(path, json);
-        }
+        foreach (Transform child in gltfGround) SaveJson(child);
+    }
+    void SaveJson(Transform child)
+    {
+        ObjectParser parser = ObjectParser.Instance;
+        parser.EncodingObject(child);
+        string json = JsonUtility.ToJson(parser);
+        string fileName = child.name;
+        string path = Path.Combine(defaultPath, fileName);
+        File.WriteAllText(path, json);
     }
     void SaveLights()
     {
@@ -90,12 +106,7 @@ public class DataController : MonoBehaviour
         string json = JsonUtility.ToJson(lightsData);
         File.WriteAllText(lightTransPath, json);
     }
-    public void LoadScene()
-    {
-        RemoveInstantiate();
-        LoadObjects();
-        LoadLights();
-    }
+    
     void RemoveInstantiate()
     {
         foreach (Transform child in gltfGround) Destroy(child.gameObject);
@@ -138,6 +149,10 @@ public class DataController : MonoBehaviour
         if (!File.Exists(lightTransPath)) return;
         
         string json = File.ReadAllText(lightTransPath);
+        LoadRealLightJson(json);
+    }
+    public void LoadRealLightJson(string json)
+    {
         LightsParser lightsData = JsonUtility.FromJson<LightsParser>(json);
 
         int count = lightsData.lightType.Count;
@@ -259,9 +274,9 @@ public class GltfParser
     public List<Vector3> normals = new List<Vector3>();
     public List<Vector2> uvs = new List<Vector2>();
     public List<TrianglesData> triangles = new List<TrianglesData>();
-    public void EncodingGltf(Transform target)//(pos, rot, size) = ConvertData.TransToVec(foundation);
+    public void EncodingGltf(Transform target)
     {
-        Clear();
+        //Clear();
 
         (pos, rot, size) = ConvertData.TransToVec(target);
         if (target.GetComponent<MeshFilter>() == null) return;
@@ -280,7 +295,7 @@ public class GltfParser
     }
     public void DecodingGltf(GltfParser data, Transform newTrans)
     {
-        Clear();
+        //Clear();
 
         if (data.vertices.Count == 0)
         {

@@ -23,7 +23,7 @@ public class RoomController : MonoBehaviour
     void Start()
     {
         lightmapAnalyzer = LightmapAnalyzer.DefaultInstance;
-        roomPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "MetaShopData", "LightData", "RoomData");
+        roomPath = Path.Combine(DataController.defaultPath, "LightData", "RoomData");
         ConnectTransform();
     }
     void ConnectTransform()
@@ -52,18 +52,18 @@ public class RoomController : MonoBehaviour
     public void LoadBakedMap(string filePath, string fileName)
     {
         if (room.GetComponent<PathToBeLoaded>().paths.Contains(fileName))
-            lightmapAnalyzer.ChangeLightmap(room, fileName);
-
-        if (!lightmapAnalyzer.loadedDataDict.ContainsKey(fileName))
         {
-            if(!room.GetComponent<PathToBeLoaded>().paths.Contains(fileName))
-                room.GetComponent<PathToBeLoaded>().paths.Add(fileName);
-            lightmapAnalyzer.Import();
-            StartCoroutine(LoadMap(fileName));
+            lightmapAnalyzer.ChangeLightmap(room, fileName);
+            currentPath = filePath;
+            return;
         }
+        room.GetComponent<PathToBeLoaded>().paths.Add(fileName);
+        lightmapAnalyzer.Import();
+        StartCoroutine(LoadMap(fileName));
         currentPath = filePath;
         Debug.Log(currentPath);
     }
+    
     IEnumerator LoadMap(string fileName)
     {
         WaitForSeconds delay = new WaitForSeconds(0.2f);
@@ -98,5 +98,17 @@ public class RoomController : MonoBehaviour
     {
         room.GetComponent<PathToBeLoaded>().paths.Remove("bakedData");
         lightmapAnalyzer.loadedDataDict.Remove("bakedData");
+    }
+    public void LoadJson(string key, string json)
+    {
+        if (room.GetComponent<PathToBeLoaded>().paths.Contains(key))
+        {
+            lightmapAnalyzer.ChangeLightmap(room, key);
+            return;
+        }  
+        room.GetComponent<PathToBeLoaded>().paths.Add(key);
+        lightmapAnalyzer.SetDataDictionary(key, json);
+        lightmapAnalyzer.Import();
+        StartCoroutine(LoadMap(key));
     }
 }

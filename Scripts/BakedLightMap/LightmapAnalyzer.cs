@@ -86,6 +86,7 @@ namespace LightmapAnalysis
             CoroutineManager.Instance.StartCoroutines(SetLightmap());
             CoroutineManager.Instance.StartCoroutines(SetMeshLightmapIndex(transArr));
         }
+        
         private Transform[] FindPathToBeLoaded()
         {
             PathToBeLoaded[] foundScripts = MonoBehaviour.FindObjectsByType<PathToBeLoaded>(FindObjectsSortMode.None);
